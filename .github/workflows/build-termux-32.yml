@@ -1,0 +1,28 @@
+name: Build ddns-go for Termux 32-bit
+
+# 允许手动在网页点击按钮触发编译
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable' # 自动使用最新稳定版 Go
+
+      - name: Build Binary for Android 32-bit
+        # CGO_ENABLED=0 确保静态编译，GOOS=android GOARCH=arm GOARM=7 代表32位安卓
+        run: |
+          CGO_ENABLED=0 GOOS=android GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w" -o ddns-go
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ddns-go-termux-32bit
+          path: ddns-go

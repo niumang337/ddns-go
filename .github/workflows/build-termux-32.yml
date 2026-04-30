@@ -1,4 +1,4 @@
-name: Build ddns-go for Termux 32-bit
+name: Build ddns-go for Termux 32-bit (Native Android)
 
 # 允许手动在网页点击按钮触发编译
 on:
@@ -14,15 +14,29 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 'stable' # 自动使用最新稳定版 Go
+          go-version: 'stable' 
 
-      - name: Build Binary for Android 32-bit
-        # CGO_ENABLED=0 确保静态编译，GOOS=android GOARCH=arm GOARM=7 代表32位安卓
+      - name: Build Native Android 32-bit Binary
         run: |
-          CGO_ENABLED=0 GOOS=android GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w" -o ddns-go
+          # 1. 自动寻找 GitHub 服务器上预装的最新版 Android NDK 路径
+          NDK_PATH=$(ls -d $ANDROID_HOME/ndk/* | sort -V | tail -n 1)
+          echo "检测到的 NDK 路径: $NDK_PATH"
+          
+          # 2. 将 C 编译器 (CC) 临时替换为 Android NDK 里的 32位 ARM 编译器
+          # 指定 API 24 (即 Android 7.0，是 Termux 的标准支持版本)
+          export CC="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"
+          
+          # 3. 必须开启 CGO，并指定目标为 android 和 armv7
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm
+          export GOARM=7
+          
+          # 4. 编译！加入 -extldflags=-pie 确保符合 Android 安全机制 (位置独立可执行文件)
+          go build -trimpath -ldflags "-s -w -extldflags=-pie" -o ddns-go
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ddns-go-termux-32bit
+          name: ddns-go-android-32bit
           path: ddns-go
